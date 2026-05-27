@@ -5,6 +5,7 @@ import {
   MAX_INPUT_CHARS,
   MAX_OUTPUT_TOKENS,
   MAX_HISTORY_MESSAGES,
+  TEMPERATURE,
 } from "@/lib/utils/limits";
 
 /**
@@ -118,6 +119,7 @@ export async function POST(req: Request) {
       system: systemPrompt,
       messages: modelMessages,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
+      temperature: TEMPERATURE,
     });
 
     // streamText의 결과를 UI message stream으로 변환해 클라이언트에 전달한다.

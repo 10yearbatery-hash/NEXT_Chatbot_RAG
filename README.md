@@ -8,7 +8,7 @@
 
 ```bash
 npm install
-cp .env.example .env.local      # OPENAI_API_KEY, APP_ACCESS_CODE 채우기
+.env # env 파일 만들고 OPENAI_API_KEY, APP_ACCESS_CODE 채우기
 npm run dev                     # http://localhost:3000
 ```
 
