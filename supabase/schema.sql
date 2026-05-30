@@ -34,10 +34,17 @@ create table if not exists public.documents (
 
 -- 3) 유사도 검색용 인덱스 (옵션이지만 row 많아지면 필수)
 --    cosine distance 기준. ivfflat은 row가 어느 정도 쌓인 뒤 만들면 효율적.
-create index if not exists documents_embedding_idx
-  on public.documents
-  using ivfflat (embedding vector_cosine_ops)
-  with (lists = 100);
+--
+-- ⚠️ 주의: ivfflat은 데이터가 충분히 쌓인 뒤(최소 lists × 수십 배 이상)에 만들어야 합니다.
+--    lists=100 이면 100개 클러스터로 나누는데, row가 4~10개뿐이면
+--    기본 probes=1 로 1개 클러스터만 스캔 → 대부분의 row가 검색에서 누락됩니다.
+--    개발/테스트 단계에서는 인덱스 없이 순차 스캔(sequential scan)을 사용하세요.
+--    row가 수천 개 이상 쌓였을 때 아래 주석을 해제하고 실행하세요.
+--
+-- create index if not exists documents_embedding_idx
+--   on public.documents
+--   using ivfflat (embedding vector_cosine_ops)
+--   with (lists = 100);
 
 
 -- 4) match_documents RPC

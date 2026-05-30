@@ -1,19 +1,4 @@
-/**
- * 유사 chunk 검색 API — Session 2에서 채웁니다.
- *
- * 흐름:
- *   클라이언트 → POST /api/search { query, accessCode }
- *   → access code 검증
- *   → retrieveRelevantChunks(query) 호출
- *   → 결과를 그대로 JSON으로 반환 (UI 확인용)
- *
- * 이 endpoint는 디버깅/소스 확인용입니다.
- * 실제 챗봇 답변에는 app/api/chat/route.ts 안에서 RAG context를 직접 끼워 넣습니다.
- *
- * TODO SESSION 2-8:
- *   - 본체에서 retrieveRelevantChunks(query)를 호출하도록 바꾸세요.
- */
-
+// TODO SESSION 2-8: retrieveRelevantChunks(query) 호출 후 결과 반환 (SourcePanel 확인용).
 export const runtime = "nodejs";
 
 type SearchBody = {
@@ -41,7 +26,6 @@ export async function POST(req: Request) {
     return Response.json({ error: "query가 비어 있습니다." }, { status: 400 });
   }
 
-  // TODO SESSION 2-8: (구현 완료) 유사 chunk 검색 결과를 그대로 반환 (UI 확인용).
   try {
     const { retrieveRelevantChunks } = await import("@/lib/ai/rag");
     const chunks = await retrieveRelevantChunks(body.query);

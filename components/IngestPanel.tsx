@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 
-/**
- * 자기소개 문서 ingest UI — Session 2.
- *
- * textarea로 자기소개 본문을 받아 POST /api/ingest 로 보낸다.
- * 서버가 chunk → embedding → Supabase 저장까지 처리한다.
- *
- * TODO SESSION 2-7: (구현 완료) textarea + ingest 버튼 + 성공/실패 메시지.
- */
+// TODO SESSION 2-7: textarea + ingest 버튼 + 성공/실패 메시지.
 type Status =
   | { kind: "idle" }
   | { kind: "loading" }

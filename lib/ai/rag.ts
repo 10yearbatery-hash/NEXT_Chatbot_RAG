@@ -1,19 +1,3 @@
-/**
- * RAG (Retrieval-Augmented Generation) — Session 2에서 채웁니다.
- *
- * 전체 흐름:
- *   [ingest 시점]
- *     문서 → chunkText() → createEmbedding() → Supabase documents 테이블에 저장
- *
- *   [질문 시점]
- *     사용자 질문 → createEmbedding() → match_documents RPC로 유사 chunk 검색
- *                → buildRagContext()로 system prompt에 끼워 넣기 → LLM 호출
- *
- * 핵심 원칙:
- *   - 검색된 chunk가 없으면 "모른다"고 답하도록 system prompt에 명시.
- *   - topK는 3~5개로 제한 (너무 많으면 토큰 낭비 + 잡음 증가).
- */
-
 import { chunkText } from "@/lib/utils/chunk";
 import { createEmbedding, createEmbeddings } from "@/lib/ai/embeddings";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -24,14 +8,12 @@ export type RetrievedChunk = {
   metadata?: Record<string, unknown>;
 };
 
-// Supabase documents 테이블의 한 row 모양.
 type DocumentRow = {
   content: string;
   metadata: Record<string, unknown>;
   embedding: number[];
 };
 
-// match_documents RPC가 돌려주는 한 row 모양.
 type MatchRow = {
   id: string;
   content: string;
@@ -39,17 +21,21 @@ type MatchRow = {
   similarity: number;
 };
 
-/**
- * 자기소개 문서 한 편을 받아 chunking → embedding → Supabase 저장까지.
- *
- * TODO SESSION 2-3: (구현 완료) chunk → embed → documents 테이블 insert.
- */
+// TODO SESSION 2-3: chunk → embed → documents 테이블 insert.
 export async function ingestDocument(text: string): Promise<void> {
   const chunks = chunkText(text);
+  console.log("[DEBUG ingest] input text length:", text.length);
+  console.log("[DEBUG ingest] chunks created:", chunks.length);
+  chunks.forEach((c, i) =>
+    console.log(`[DEBUG ingest] chunk[${i}] len=${c.length} preview="${c.slice(0, 60)}..."`),
+  );
   if (chunks.length === 0) return;
 
-  // chunk 전부를 한 번에 embedding (batch가 개별 호출보다 싸고 빠르다).
   const embeddings = await createEmbeddings(chunks);
+  console.log("[DEBUG ingest] embeddings returned:", embeddings.length);
+  embeddings.forEach((e, i) =>
+    console.log(`[DEBUG ingest] embedding[${i}] dim=${e.length} first3=[${e.slice(0, 3).join(", ")}]`),
+  );
 
   const rows: DocumentRow[] = chunks.map((content, i) => ({
     content,
@@ -57,33 +43,47 @@ export async function ingestDocument(text: string): Promise<void> {
     embedding: embeddings[i],
   }));
 
-  // service role 키는 RLS를 우회하므로 반드시 서버에서만 호출돼야 한다.
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase.from("documents").insert(rows);
   if (error) {
+    console.error("[DEBUG ingest] insert ERROR:", error);
     throw new Error(`문서 저장 실패: ${error.message}`);
   }
+  console.log("[DEBUG ingest] insert OK,", rows.length, "rows");
 }
 
-/**
- * 사용자 질문에 가장 유사한 chunk를 Supabase에서 검색.
- *
- * TODO SESSION 2-5: (구현 완료) 질문 embed → match_documents RPC 호출.
- */
+// TODO SESSION 2-5: 질문 embed → match_documents RPC 호출.
 export async function retrieveRelevantChunks(
   query: string,
   topK: number = 4,
 ): Promise<RetrievedChunk[]> {
+  console.log("[DEBUG retrieve] query:", JSON.stringify(query));
   const queryEmbedding = await createEmbedding(query);
+  console.log(
+    `[DEBUG retrieve] query embedding dim=${queryEmbedding.length} first3=[${queryEmbedding.slice(0, 3).join(", ")}]`,
+  );
 
   const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase.rpc("match_documents", {
-    query_embedding: queryEmbedding,
+
+  // ⚠️ Supabase RPC는 number[]를 vector 타입으로 자동 변환 못하는 경우가 있다.
+  // pgvector가 인식하는 문자열 리터럴 "[v1,v2,...]"으로 명시적 변환.
+  const embeddingString = `[${queryEmbedding.join(",")}]`;
+  // match_threshold 0.5는 한국어 + 짧은 질문에선 너무 엄격하다. 0.1로 낮춰 회수율을 살림.
+  const rpcParams = {
+    query_embedding: embeddingString,
+    match_threshold: 0.1,
     match_count: topK,
-  });
+  };
+  console.log(
+    `[DEBUG retrieve] rpc params: threshold=${rpcParams.match_threshold} count=${rpcParams.match_count} embedding_string_len=${embeddingString.length}`,
+  );
+  const { data, error } = await supabase.rpc("match_documents", rpcParams);
   if (error) {
+    console.error("[DEBUG retrieve] rpc ERROR:", error);
     throw new Error(`유사 chunk 검색 실패: ${error.message}`);
   }
+  console.log("[DEBUG retrieve] rpc raw data:", JSON.stringify(data));
+  console.log("[DEBUG retrieve] result count:", (data ?? []).length);
 
   return ((data ?? []) as MatchRow[]).map((row) => ({
     content: row.content,
@@ -92,12 +92,7 @@ export async function retrieveRelevantChunks(
   }));
 }
 
-/**
- * 검색된 chunk들을 LLM에 줄 context 문자열로 변환.
- * 빈 배열이면 빈 문자열을 반환해 호출부에서 "RAG 미적용"으로 분기할 수 있게 한다.
- *
- * TODO SESSION 2-6: (구현 완료) 안내문 + 번호 매긴 chunk로 context 조립.
- */
+// TODO SESSION 2-6: 안내문 + 번호 매긴 chunk로 context 조립.
 export function buildRagContext(chunks: RetrievedChunk[]): string {
   if (chunks.length === 0) return "";
 
