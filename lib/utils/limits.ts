@@ -11,7 +11,7 @@ export const MAX_INPUT_CHARS = 500;
 // 모델이 한 번에 생성할 수 있는 최대 출력 토큰 수.
 // 1 토큰 ≈ 영어 4글자 / 한글 1~2글자.
 // TODO SESSION 1-5 (선택): 캐릭터 답변 길이에 맞춰 조정.
-export const MAX_OUTPUT_TOKENS = 500;
+export const MAX_OUTPUT_TOKENS = 1500;
 
 // 사용할 모델 이름. 기본은 가장 저렴한 gpt-4o-mini.
 // TODO SESSION 1-6 (선택): 더 똑똑한 답이 필요하면 "gpt-4o"로 (비용 15~20배).
