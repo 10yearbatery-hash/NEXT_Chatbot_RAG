@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "안암 밥집 챗봇",
-  description: "고려대 근처 식당 AI 추천",
+  title: "8000원 클럽",
+  description: "고려대 근처 만원 이하 가성비 밥집 추천",
 };
 
 export default function RootLayout({
